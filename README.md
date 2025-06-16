@@ -1,9 +1,9 @@
 | Component   | Tool                    |
 | ----------- | ----------------------- |
 | Language    | Java (17 preferred)     |
-| Framework   | Spring Boot, Spring MVC |
+| Framework   | Spring Boot |
 | ORM         | Spring Data JPA         |
-| Database    | MySQL/PostgreSQL        |
+| Database    | MySQL     |
 | Caching     | Redis                   |
 | Build Tool  | Maven                   |
 | API Testing | Postman                 |
