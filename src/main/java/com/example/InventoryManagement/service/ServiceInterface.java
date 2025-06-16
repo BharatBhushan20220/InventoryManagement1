@@ -1,9 +1,11 @@
 package com.example.InventoryManagement.service;
 
 import com.example.InventoryManagement.entity.Items;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+
 
 public interface ServiceInterface {
     Items createItem(Items item);
