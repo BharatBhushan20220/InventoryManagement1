@@ -7,6 +7,8 @@ import com.example.InventoryManagement.repository.ItemRepository;
 import com.example.InventoryManagement.repository.ReservationRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -20,11 +22,13 @@ public class ServiceImplementation implements ServiceInterface {
     private final ItemRepository itemRepository;
     private final ReservationRepository reservationRepository;
 
+    @CacheEvict(value = "items", key = "#item.id")
     @Override
     public Items createItem(Items item) {
         return itemRepository.save(item);
     }
 
+    @Cacheable(value = "items", key = "#id")
     @Override
     public Optional<Items> getItemById(Long id) {
         return itemRepository.findById(id);
@@ -35,6 +39,7 @@ public class ServiceImplementation implements ServiceInterface {
         return itemRepository.findAll();
     }
 
+    @CacheEvict(value = "items", key = "#itemId")
     @Override
     @Transactional
     public Items reserveItem(Long itemId, int quantity, String reservedBy) {
@@ -57,6 +62,7 @@ public class ServiceImplementation implements ServiceInterface {
         return itemRepository.save(items);
     }
 
+    @CacheEvict(value = "items", key = "#reservationId")
     @Override
     @Transactional
     public Items cancelReservation(Long reservationId) {
