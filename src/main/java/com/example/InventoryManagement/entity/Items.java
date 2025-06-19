@@ -14,27 +14,37 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class Items {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String name;
-    private String sku;
-    private int quantity;
-    private int reservedQuantity;
 
-    private double price;
+    @Column(unique = true, nullable = false)
+    private String sku;
+
+    private Integer quantity;
+
+    private Integer reservedQuantity;
+
+    private Double price;
+
+    @Version
+    private Long version;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     @PrePersist
-    public void prePersist() {
+    public void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
 
     @PreUpdate
-    public void preUpdate() {
+    public void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
 }
+

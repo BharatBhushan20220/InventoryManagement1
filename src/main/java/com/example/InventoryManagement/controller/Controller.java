@@ -35,17 +35,17 @@ public class Controller {
         return ResponseEntity.ok("Welcome to Inventory management Project !!");
     }
 
-    @PostMapping
-    public ResponseEntity<ItemResponse> createItems(@Valid @RequestBody ItemRequest itemRequest) {
-        Items items = Items.builder()
-                .name(itemRequest.getName())
-                .sku(itemRequest.getName())
-                .quantity(itemRequest.getQuantity())
-                .price(itemRequest.getPrice())
-                .build();
+    @PostMapping("/items")
+    public ResponseEntity<ItemResponse> createItem(@Valid @RequestBody ItemRequest request) {
+        Items item = new Items();
+        item.setName(request.getName());
+        item.setSku(request.getSku());
+        item.setQuantity(request.getQuantity());
+        item.setPrice(request.getPrice());
+        item.setReservedQuantity(0); // Default
 
-        Items items1 = serviceInterface.createItem(items);
-        return ResponseEntity.ok(toItemResponse(items1));
+        Items savedItem = serviceInterface.createItem(item);
+        return ResponseEntity.ok(toItemResponse(savedItem));
     }
 
     @GetMapping("/{id}")
@@ -64,9 +64,17 @@ public class Controller {
     }
 
     @PostMapping("/{itemId}/reserve")
-    public ResponseEntity<ItemResponse> reserveItem(@PathVariable Long itemId, @Valid @RequestBody ReserveItemRequest reserveItemRequest) {
-        Items items = serviceInterface.reserveItem(itemId, reserveItemRequest.getQuantity(), reserveItemRequest.getReservedBy());
-        return ResponseEntity.ok(toItemResponse(items));
+    public ResponseEntity<ItemResponse> reserveItem(
+            @PathVariable Long itemId,
+            @Valid @RequestBody ReserveItemRequest reserveItemRequest) {
+
+        Items item = serviceInterface.reserveItem(
+                itemId,
+                reserveItemRequest.getQuantity(),
+                reserveItemRequest.getReservedBy()
+        );
+
+        return ResponseEntity.ok(toItemResponse(item));
     }
 
     @PostMapping("/reservation/{reservationId}/cancel")
@@ -75,16 +83,14 @@ public class Controller {
         return ResponseEntity.ok(toItemResponse(items));
     }
 
-    private ItemResponse toItemResponse(Items items) {
+    private ItemResponse toItemResponse(Items item) {
         return ItemResponse.builder()
-                .id(items.getId())
-                .name(items.getName())
-                .sku(items.getSku())
-                .quantity(items.getQuantity())
-                .reservedQuantity(items.getReservedQuantity())
-                .price(items.getPrice())
-                .createdAt(items.getCreatedAt())
-                .updatedAt(items.getUpdatedAt())
+                .id(item.getId())
+                .name(item.getName())
+                .sku(item.getSku())
+                .quantity(item.getQuantity())
+                .reservedQuantity(item.getReservedQuantity())
+                .price(item.getPrice())
                 .build();
     }
 }

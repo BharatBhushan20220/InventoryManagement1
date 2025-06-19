@@ -1,7 +1,7 @@
 package com.example.InventoryManagement.dto;
 
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -11,9 +11,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ReserveItemRequest {
 
-    @Positive
+    @Min(value = 1, message = "Quantity must be at least 1")
     private int quantity;
 
-    @NotBlank
+    @NotBlank(message = "ReservedBy must not be blank")
     private String reservedBy;
 }

@@ -19,21 +19,23 @@ public class Reservation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private int reservedQuantity;
+    //Use object reference, not just ID
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "item_id", nullable = false)
+    private Items items;
+
+    private Integer reservedQuantity;
 
     @Enumerated(EnumType.STRING)
     private ReservationStatus status;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "Item_id")
-    private Items items;
+    private String reservedBy;
 
-    private String reservedBy; // Optional: user ID or session ID
     private LocalDateTime reservedAt;
     private LocalDateTime cancelledAt;
 
     @PrePersist
-    public void prePersist() {
+    public void setReservationTimestamp() {
         this.reservedAt = LocalDateTime.now();
     }
 

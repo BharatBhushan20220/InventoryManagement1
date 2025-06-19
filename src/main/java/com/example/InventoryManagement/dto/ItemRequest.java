@@ -12,16 +12,16 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ItemRequest {
 
-    @NotBlank
+    @NotBlank(message = "Item name is required")
     private String name;
 
-    @NotBlank
+    @NotBlank(message = "SKU is required")
     private String sku;
 
-    @PositiveOrZero
+    @PositiveOrZero(message = "Quantity must be zero or more")
     private int quantity;
 
-    @Positive
+    @Positive(message = "Price must be greater than zero")
     private double price;
 
 }
