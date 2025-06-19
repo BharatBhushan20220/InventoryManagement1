@@ -5,20 +5,32 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<String> handleNotFound(ResourceNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+
+    @ExceptionHandler(ItemNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleItemNotFound(ItemNotFoundException ex) {
+        return errorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<String> handleIllegalState(IllegalStateException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    @ExceptionHandler(OutOfStockException.class)
+    public ResponseEntity<Map<String, String>> handleOutOfStock(OutOfStockException ex) {
+        return errorResponse(ex.getMessage(), HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<String> handleGeneric(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred: " + ex.getMessage());
+    @ExceptionHandler(ReservationNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleReservationNotFound(ReservationNotFoundException ex) {
+        return errorResponse(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
+
+    // Reusable helper method
+    private ResponseEntity<Map<String, String>> errorResponse(String message, HttpStatus status) {
+        Map<String, String> error = new HashMap<>();
+        error.put("error", message);
+        return ResponseEntity.status(status).body(error);
+    }
+
 }
