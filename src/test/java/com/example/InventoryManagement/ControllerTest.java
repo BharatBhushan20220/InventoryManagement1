@@ -1,24 +1,28 @@
 package com.example.InventoryManagement;
 
-import com.example.InventoryManagement.controller.Controller;
 import com.example.InventoryManagement.dto.ReserveItemRequest;
 import com.example.InventoryManagement.entity.Items;
 import com.example.InventoryManagement.repository.ItemRepository;
 import com.example.InventoryManagement.repository.ReservationRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(Controller.class)
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 public class ControllerTest {
+
     @Autowired
-    private WebTestClient webTestClient;
+    private MockMvc mockMvc;
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
@@ -28,6 +32,9 @@ public class ControllerTest {
 
     @Autowired
     private ReservationRepository reservationRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     private Long itemId;
 
@@ -47,25 +54,20 @@ public class ControllerTest {
         Items saved = itemRepository.save(item);
         itemId = saved.getId();
 
-        // preload Redis
         redisTemplate.opsForValue().set("stock:" + itemId, saved.getQuantity());
     }
 
     @Test
-    void testReserveItemIntegration_success() {
+    void testReserveItemIntegration_success() throws Exception {
         ReserveItemRequest request = new ReserveItemRequest(2, "bharat@example.com");
 
-        webTestClient.post()
-                .uri("/items/{id}/reserve", itemId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.reservedQuantity").isEqualTo(2)
-                .jsonPath("$.quantity").isEqualTo(10);
+        mockMvc.perform(post("/api/items/{id}/reserve", itemId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reservedQuantity").value(2))
+                .andExpect(jsonPath("$.quantity").value(10));
 
-        // Redis check (stock should be 8 now)
         Object redisValue = redisTemplate.opsForValue().get("stock:" + itemId);
         assert redisValue != null && redisValue.toString().equals("8");
     }
