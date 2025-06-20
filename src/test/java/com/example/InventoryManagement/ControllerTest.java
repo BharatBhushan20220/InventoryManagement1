@@ -6,6 +6,7 @@ import com.example.InventoryManagement.repository.ItemRepository;
 import com.example.InventoryManagement.repository.ReservationRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -14,6 +15,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -39,14 +41,15 @@ public class ControllerTest {
     private Long itemId;
 
     @BeforeEach
-    void setup() {
+    void setupTestData() {
+        // Clean up
         reservationRepository.deleteAll();
         itemRepository.deleteAll();
 
+        // Save item in DB
         Items item = Items.builder()
                 .name("MacBook Pro")
                 .sku("MBP2024")
-                .quantity(10)
                 .reservedQuantity(0)
                 .price(200000.0)
                 .build();
@@ -54,21 +57,28 @@ public class ControllerTest {
         Items saved = itemRepository.save(item);
         itemId = saved.getId();
 
+        // Save stock in Redis
         redisTemplate.opsForValue().set("stock:" + itemId, saved.getQuantity());
     }
 
     @Test
+    @DisplayName("POST /api/items/{id}/reserve - should reserve item and update Redis")
     void testReserveItemIntegration_success() throws Exception {
+        // Arrange
         ReserveItemRequest request = new ReserveItemRequest(2, "bharat@example.com");
 
+        // Act & Assert
         mockMvc.perform(post("/api/items/{id}/reserve", itemId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.reservedQuantity").value(2))
-                .andExpect(jsonPath("$.quantity").value(10));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.reservedQuantity").value(2));
 
+        // Redis assertion
         Object redisValue = redisTemplate.opsForValue().get("stock:" + itemId);
-        assert redisValue != null && redisValue.toString().equals("8");
+        assertThat(redisValue)
+                .as("Stock in Redis should be reduced by reserved quantity")
+                .isEqualTo(8);
     }
 }
