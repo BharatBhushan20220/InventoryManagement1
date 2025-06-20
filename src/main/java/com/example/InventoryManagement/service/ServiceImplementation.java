@@ -33,17 +33,11 @@ public class ServiceImplementation implements ServiceInterface {
     @CacheEvict(value = "items", key = "#item.id")
     @Override
     public Items createItem(Items item) {
-        // Set default reserved quantity if not already set
         if (item.getReservedQuantity() == null) {
             item.setReservedQuantity(0);
         }
-
         Items saved = itemRepository.save(item);
-
-        // Redis key pattern: stock:{itemId}
-        String redisKey = "stock:" + saved.getId();
-        redisTemplate.opsForValue().set(redisKey, saved.getQuantity());
-
+        redisTemplate.opsForValue().set("stock:" + saved.getId(), saved.getQuantity());
         return saved;
     }
 
@@ -68,8 +62,6 @@ public class ServiceImplementation implements ServiceInterface {
     @Transactional
     public Items reserveItem(Long itemId, int quantity, String reservedBy) {
         String redisKey = "stock:" + itemId;
-
-        // 1. Atomically decrement stock in Redis
         Long newStock = redisTemplate.opsForValue().decrement(redisKey, quantity);
 
         if (newStock == null) {
@@ -77,17 +69,14 @@ public class ServiceImplementation implements ServiceInterface {
         }
 
         if (newStock < 0) {
-            // 2. Rollback if stock goes below 0
             redisTemplate.opsForValue().increment(redisKey, quantity);
             throw new OutOfStockException(itemId);
         }
 
         try {
-            // 3. Fetch item from DB
             Items items = itemRepository.findById(itemId)
                     .orElseThrow(() -> new ItemNotFoundException(itemId));
 
-            // 4. Create and save reservation
             Reservation reservation = Reservation.builder()
                     .items(items)
                     .reservedQuantity(quantity)
@@ -97,12 +86,10 @@ public class ServiceImplementation implements ServiceInterface {
                     .build();
             reservationRepository.save(reservation);
 
-            // 5. Update reservedQuantity and save item
             items.setReservedQuantity(items.getReservedQuantity() + quantity);
             return itemRepository.save(items);
 
         } catch (Exception e) {
-            // 6. Rollback Redis if anything fails in DB
             redisTemplate.opsForValue().increment(redisKey, quantity);
             throw new RuntimeException("Reservation failed. Redis stock rolled back.", e);
         }
@@ -112,28 +99,22 @@ public class ServiceImplementation implements ServiceInterface {
     @Override
     @Transactional
     public Items cancelReservation(Long reservationId) {
-        // 1. Fetch reservation from DB
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ReservationNotFoundException(reservationId));
 
-        // 2. Check status
         if (reservation.getStatus() != ReservationStatus.RESERVED) {
             throw new IllegalStateException("Only RESERVED reservations can be cancelled.");
         }
 
-        // 3. Get the item
         Items item = reservation.getItems();
 
-        // 4. Update reservation
         reservation.setStatus(ReservationStatus.CANCELLED);
         reservation.setCancelledAt(LocalDateTime.now());
         reservationRepository.save(reservation);
 
-        // 5. Update DB item’s reserved quantity
         item.setReservedQuantity(item.getReservedQuantity() - reservation.getReservedQuantity());
         itemRepository.save(item);
 
-        // 6. Increment Redis stock back
         String redisKey = "stock:" + item.getId();
         redisTemplate.opsForValue().increment(redisKey, reservation.getReservedQuantity());
 

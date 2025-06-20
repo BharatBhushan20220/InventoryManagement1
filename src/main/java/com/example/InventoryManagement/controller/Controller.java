@@ -2,9 +2,13 @@ package com.example.InventoryManagement.controller;
 
 import com.example.InventoryManagement.dto.ItemRequest;
 import com.example.InventoryManagement.dto.ItemResponse;
+import com.example.InventoryManagement.dto.ReservationResponse;
 import com.example.InventoryManagement.dto.ReserveItemRequest;
 import com.example.InventoryManagement.entity.Items;
+import com.example.InventoryManagement.entity.Reservation;
+import com.example.InventoryManagement.exceptionHandling.ItemNotFoundException;
 import com.example.InventoryManagement.exceptionHandling.ResourceNotFoundException;
+import com.example.InventoryManagement.repository.ReservationRepository;
 import com.example.InventoryManagement.service.ServiceInterface;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +24,7 @@ import java.util.List;
 public class Controller {
 
     private final ServiceInterface serviceInterface;
+    private final ReservationRepository reservationRepository;
 
     //Testing Redis manually
     @GetMapping("/ping")
@@ -35,7 +40,7 @@ public class Controller {
         return ResponseEntity.ok("Welcome to Inventory management Project !!");
     }
 
-    @PostMapping("/items")
+    @PostMapping
     public ResponseEntity<ItemResponse> createItem(@Valid @RequestBody ItemRequest request) {
         Items item = new Items();
         item.setName(request.getName());
@@ -53,7 +58,7 @@ public class Controller {
         return serviceInterface.getItemById(id)
                 .map(this::toItemResponse)
                 .map(ResponseEntity::ok)
-                .orElseThrow(() -> new ResourceNotFoundException("Item is found from this given id " + id));
+                .orElseThrow(() -> new ItemNotFoundException(id));
     }
 
     @GetMapping
@@ -64,7 +69,7 @@ public class Controller {
     }
 
     @PostMapping("/{itemId}/reserve")
-    public ResponseEntity<ItemResponse> reserveItem(
+    public ResponseEntity<ReservationResponse> reserveItem(
             @PathVariable Long itemId,
             @Valid @RequestBody ReserveItemRequest reserveItemRequest) {
 
@@ -74,7 +79,19 @@ public class Controller {
                 reserveItemRequest.getReservedBy()
         );
 
-        return ResponseEntity.ok(toItemResponse(item));
+        // fetch latest reservation (for demo purposes; in production, return from service)
+        Reservation reservation = reservationRepository
+                .findTopByItems_IdAndReservedByOrderByReservedAtDesc(itemId, reserveItemRequest.getReservedBy())
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+
+        return ResponseEntity.ok(
+                ReservationResponse.builder()
+                        .itemId(item.getId())
+                        .reservedQuantity(reservation.getReservedQuantity())
+                        .reservedBy(reservation.getReservedBy())
+                        .reservationId(reservation.getId())
+                        .build()
+        );
     }
 
     @PostMapping("/reservation/{reservationId}/cancel")
