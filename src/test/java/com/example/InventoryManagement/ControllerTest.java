@@ -42,9 +42,6 @@ public class ControllerTest {
 
     @BeforeEach
     void setupTestData() {
-        // Clean up
-        reservationRepository.deleteAll();
-        itemRepository.deleteAll();
 
         // Save item in DB
         Items item = Items.builder()
