@@ -7,7 +7,6 @@ import com.example.InventoryManagement.dto.ReserveItemRequest;
 import com.example.InventoryManagement.entity.Items;
 import com.example.InventoryManagement.entity.Reservation;
 import com.example.InventoryManagement.exceptionHandling.ItemNotFoundException;
-import com.example.InventoryManagement.exceptionHandling.ResourceNotFoundException;
 import com.example.InventoryManagement.repository.ReservationRepository;
 import com.example.InventoryManagement.service.ServiceInterface;
 import jakarta.validation.Valid;
@@ -16,31 +15,36 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/items")
 @RequiredArgsConstructor
+@Tag(name = "Item API", description = "Inventory and reservation management endpoints")
 public class Controller {
 
     private final ServiceInterface serviceInterface;
     private final ReservationRepository reservationRepository;
 
-    //Testing Redis manually
     @GetMapping("/ping")
     @Cacheable("ping")
+    @Operation(summary = "Ping Redis", description = "Tests Redis caching by returning a static string with log on cache miss.")
     public String ping() {
         System.out.println("HIT");
         return "pong";
     }
 
-    //Just Checking controller is working Properly or not
     @GetMapping("/home")
+    @Operation(summary = "Welcome message", description = "Test if the controller is reachable.")
     public ResponseEntity<String> welCome() {
         return ResponseEntity.ok("Welcome to Inventory management Project !!");
     }
 
     @PostMapping
+    @Operation(summary = "Create Item", description = "Adds a new item to the inventory.")
     public ResponseEntity<ItemResponse> createItem(@Valid @RequestBody ItemRequest request) {
         Items item = new Items();
         item.setName(request.getName());
@@ -54,6 +58,7 @@ public class Controller {
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Get Item by ID", description = "Fetch a specific item using its ID.")
     public ResponseEntity<ItemResponse> getItemsById(@PathVariable Long id) {
         return serviceInterface.getItemById(id)
                 .map(this::toItemResponse)
@@ -62,6 +67,7 @@ public class Controller {
     }
 
     @GetMapping
+    @Operation(summary = "Get All Items", description = "Returns all available items from the inventory.")
     public ResponseEntity<List<ItemResponse>> getAllItems() {
         List<ItemResponse> list = serviceInterface.getAllItems()
                 .stream().map(this::toItemResponse).toList();
@@ -69,6 +75,7 @@ public class Controller {
     }
 
     @PostMapping("/{itemId}/reserve")
+    @Operation(summary = "Reserve Item", description = "Reserves quantity of an item for a specific user.")
     public ResponseEntity<ReservationResponse> reserveItem(
             @PathVariable Long itemId,
             @Valid @RequestBody ReserveItemRequest reserveItemRequest) {
@@ -79,7 +86,6 @@ public class Controller {
                 reserveItemRequest.getReservedBy()
         );
 
-        // fetch latest reservation (for demo purposes; in production, return from service)
         Reservation reservation = reservationRepository
                 .findTopByItems_IdAndReservedByOrderByReservedAtDesc(itemId, reserveItemRequest.getReservedBy())
                 .orElseThrow(() -> new RuntimeException("Reservation not found"));
@@ -95,6 +101,7 @@ public class Controller {
     }
 
     @PostMapping("/reservation/{reservationId}/cancel")
+    @Operation(summary = "Cancel Reservation", description = "Cancels a reservation using its ID and updates inventory.")
     public ResponseEntity<ItemResponse> cancelReservation(@PathVariable Long reservationId) {
         Items items = serviceInterface.cancelReservation(reservationId);
         return ResponseEntity.ok(toItemResponse(items));
